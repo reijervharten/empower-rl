@@ -9,6 +9,8 @@ from utils import plotLearning
 
 class Statistics(object):
     def __init__(self, slices):
+        self.precision = 1
+
         self.slices = slices
 
         self.log_file = open("Throughput_E1.csv", "w")
@@ -30,13 +32,12 @@ class Statistics(object):
 
     
     def storeTimestep(self, throughputs, quantums, reward, action):
-        self.throughputs.append(throughputs)
-        print("throughputs:", throughputs)
-        self.quantums.append(quantums)
+        self.throughputs.append([round(tp, self.precision) for tp in throughputs])
+        self.quantums.append([round(q, self.precision) for q in quantums])
         self.rewards.append(reward)
         self.actions.append(action)
 
-        means = [np.mean(slice_throughputs) for slice_throughputs in np.transpose(throughputs)]
+        means = [round(np.mean(slice_throughputs), self.precision) for slice_throughputs in np.transpose(throughputs)]
         self.means.append(means)
 
     
@@ -71,14 +72,15 @@ class Controller(object):
 
     
     def run(self, n_episodes):
-        interval = 1
-        j=0
         statistics = Statistics(self.slices)
+        interval = 1
+        iterations = 0
+
         for i in range(n_episodes):
             Run_every_interval_seconds = True
 
             state_spaces = self.influxController.get_stats()
-            throughputs = [round(state_spaces[i] / 1000000, self.precision) for i in range(self.slices)]
+            throughputs = [tp / 1000000 for tp in state_spaces]
             all_throughputs_met = all([throughput > requirement for (throughput, requirement) in zip(throughputs, self.threshold_requirements)])
 
             while Run_every_interval_seconds:
@@ -86,7 +88,7 @@ class Controller(object):
                 #Learning only when one of the slice throughputs is not met.  
 
                 state_spaces = self.influxController.get_stats()
-                throughputs = [round(state_spaces[i] / 1000000, self.precision) for i in range(self.slices)]
+                throughputs = [tp / 1000000 for tp in state_spaces]
                 throughputs = np.asarray(throughputs)
 
                 action = self.agent.choose_action(throughputs)
@@ -97,7 +99,7 @@ class Controller(object):
                 sleep(interval - time() % interval)
 
                 state_spaces = self.influxController.get_stats()
-                new_throughputs = [round(state_spaces[i] / 1000000, self.precision) for i in range(self.slices)]
+                new_throughputs = [tp / 1000000 for tp in state_spaces]
                 new_throughputs = np.asarray(throughputs)
                 
                 if not all_throughputs_met or i < 2000:
@@ -108,15 +110,14 @@ class Controller(object):
                     loss = self.agent.learn()
 
                 #   	 pdb.set_trace()
-                j=j+1
+                iterations += 1
                 Run_every_interval_seconds = False #Controlling the loop to run every Intervsa seconds
 
-                mean_over_time_in_seconds=15*interval
                 statistics.storeTimestep(throughputs, self.quantums, reward, self.agent.action_possibilities[action])
             
             statistics.writeEpisodeStats()
 
-            if j % 100 == 0 and j > 0:
+            if iterations % 100 == 0 and iterations > 0:
                 self.agent.save_model()
         #    if i % 500 == 0 and i > 0:
                 
