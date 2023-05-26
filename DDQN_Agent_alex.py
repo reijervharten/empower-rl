@@ -71,10 +71,10 @@ class Agent(object):
                  input_dims, epsilon_dec=0.996,  epsilon_end=0.01,
                  mem_size=100000, fname='ddqn_model.h5', replace_target=10):
         self.slices = slices
-        self.n_actions = 3 ** slices
+        self.n_actions = 3 ** len(slices)
         self.action_space = [i for i in range(self.n_actions)]
         self.action_possibilities = [[]]
-        for i in range(self.slices):
+        for _ in self.slices:
             self.action_possibilities = [x + y for x in self.action_possibilities for y in [["L"], ["N"], ["H"]]]
 
         self.gamma = gamma
@@ -88,6 +88,8 @@ class Agent(object):
                                    discrete=True)
         self.q_eval = build_dqn(alpha, self.n_actions, input_dims, 256, 256)#, 128, 64)
         self.q_target = build_dqn(alpha, self.n_actions, input_dims, 256, 256)#, 128, 64)
+
+        self.Airtime = 100000  # Airtime of 10 ms time slot which will be shared among all slices
 
 
     def remember(self, state, action, reward, new_state, done):
@@ -107,12 +109,8 @@ class Agent(object):
         return action
 
 
-    def execute_action(self, action, quantums, iteration, threshold_fractions):
+    def execute_action(self, action, quantums, iteration, bandwidth_fractions):
         action_taken = self.action_possibilities[action]
-        project_id = '2788d1eb-dbe4-4972-80be-e48462968265'  # Project ID of empower SSID of Controller in Office
-        default_slice = 3
-        slice_ids = [0, 1, 2]
-        Airtime = 20000  # Airtime of 10 ms time slot which will be shared among all slices
         Q_min = 0.1
         Q_max = 0.99
         Q_Inc = 0.1
@@ -123,48 +121,47 @@ class Agent(object):
         elif iteration > 3000:
             Q_Inc = 0.005
             Q_dec = 0.005
- 
-        # if Q_i1 + Q_i2 + Q_i3 > 1.0:
-        #     if Q_i1 > 0.2:
-        #         Q_i1 = Q_i1 - 0.3*Q_i1
-        #     if Q_i2 > 0.2:
-        #         Q_i2 = Q_i2 - 0.3*Q_i2
-        #     if Q_i3 > 0.2:
-        #         Q_i3 = Q_i3 - 0.3*Q_i3
 
-        for i in range(self.slices):
+        # Update quantum based on the action taken
+        n_slices = len(self.slices)
+        for i in range(n_slices):
             match action_taken[i]:
                 case "L":
-                    quantums[i] -= threshold_fractions[i] * Q_dec
+                    quantums[i] -= bandwidth_fractions[i] * Q_dec
                 case "N":
                     quantums[i] += 0
                 case "H":
-                    quantums[i] += threshold_fractions[i] * Q_Inc
+                    quantums[i] += bandwidth_fractions[i] * Q_Inc
             
             quantums[i] = Q_min if quantums[i] < Q_min else quantums[i]
             quantums[i] = Q_max if quantums[i] > Q_max else quantums[i]
+        
+        # Make sure the quantums sum to a value of 1
+        quantums = quantums / np.sum(quantums)
 
-        for i in range(self.slices):
-            airtime = Airtime * quantums[i]
-            slice_id = slice_ids[i]
+        self.update_quantums(quantums, self.slices)
+        
+        return quantums
+    
+    
+    def update_quantums(self, quantums, slices):
+        project_id = '2788d1eb-dbe4-4972-80be-e48462968265'  # Project ID of empower SSID of Controller in Office
+
+        for (slice_id, quantum) in zip(slices, quantums):
+            airtime = self.Airtime * quantum
+            slice_id = slice_id
             requests.put(
                 'http://foo:foo@localhost:8888/api/v1/projects/%s/wifi_slices/%s' %(project_id, slice_id),
                 json={"properties": {"quantum": airtime, "sta_scheduler": 2}}) # Station Scheduler is 1 for Deficit Round Robin and 2 for Airtime Deficit Round Robin
 
-        remaining_quantum = 1-sum(quantums)
-        remaining_quantum = 0 if remaining_quantum < 0 else remaining_quantum
-        requests.put(
-                'http://foo:foo@localhost:8888/api/v1/projects/%s/wifi_slices/%s' %(project_id, default_slice),
-                json={"properties": {"quantum": remaining_quantum, "sta_scheduler": 2}}) 
-        
-        return quantums
-
 
     def get_reward(self, threshold_requirements, throughputs):
-        if all(throughputs[i] >= threshold_requirements[i] for i in range(self.slices)):
-            return 500
-        else:
-            return -500
+        score = len([i for i in range(len(self.slices)) if throughputs[i] >= threshold_requirements[i]])
+        if score == 0:
+            return -5
+        else: 
+            return score
+        
 
 
     def learn(self):

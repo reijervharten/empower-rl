@@ -2,22 +2,20 @@ import csv
 from time import sleep, time
 
 import numpy as np
-import pdb
 from DDQN_Agent_alex import Agent
 from InfluxDBController import InfluxDBController
 from utils import plotLearning
 
 class Statistics(object):
     def __init__(self, slices):
-        self.precision = 1
-
-        self.slices = slices
+        self.precision = 6
 
         self.log_file = open("Throughput_E1.csv", "w")
         self.log_data = csv.writer(self.log_file, delimiter=',')
-        csv_header = ['Slice_{}_Throughput'.format(n) for n in range(slices)] + \
-                        ['Slice_{}_Quantum'.format(n) for n in range(slices)] + \
-                        ['Reward', 'Action', 'Mean_Over_Time_in_Seconds']
+        csv_header = ['Slice_{}_Throughput'.format(n) for n in slices] + \
+                        ['Slice_{}_Quantum'.format(n) for n in slices] + \
+                        ['Slice_{}_Action'.format(n) for n in slices]  + \
+                        ['Reward', 'Mean_Over_Time_in_Seconds']
         self.log_data.writerow(csv_header)
 
         self.reset()
@@ -37,14 +35,12 @@ class Statistics(object):
         self.rewards.append(reward)
         self.actions.append(action)
 
-        means = [round(np.mean(slice_throughputs), self.precision) for slice_throughputs in np.transpose(throughputs)]
+        means = [round(np.mean(slice_throughputs), self.precision) for slice_throughputs in np.transpose(self.throughputs)]
         self.means.append(means)
 
     
     def writeEpisodeStats(self):
-        print("quantums:", [x*20000 for x in self.quantums[-1]])
-        print("mean throughputs:", self.means[-1])
-        data = self.means[-1] + [x*20000 for x in self.quantums[-1]] + [self.rewards[-1]] + [self.actions[-1]]
+        data = self.throughputs[-1] + self.quantums[-1] + self.actions[-1] + [self.rewards[-1]] 
         self.log_data.writerow(data)
 
 
@@ -55,69 +51,56 @@ class Statistics(object):
 
 
 class Controller(object):
-    def __init__(self, learning_rate, slices=3):
-        self.agent = Agent(alpha=learning_rate, gamma=0.5, slices=slices, epsilon=0.9, batch_size=64, input_dims=3)
+    def __init__(self, learning_rate, slices, required_throughputs):
+        self.agent = Agent(alpha=learning_rate, gamma=0.5, slices=slices, epsilon=0.9, batch_size=64, input_dims=len(slices))
         self.influxController = InfluxDBController()
         self.slices = slices
 
         #pdb.set_trace()
         #agent.load_model()
         
-        self.quantums = [0.1 for i in range(slices)]
-        self.threshold_requirements = [4.0, 1.5, 3.0]  # Threshold in Mbps
+        self.quantums = [1 / len(slices) for _ in slices]
+        self.threshold_requirements = required_throughputs
         threshold_requirements_sum = sum(self.threshold_requirements)
-        self.threshold_fractions = [req / threshold_requirements_sum for req in self.threshold_requirements]
+        self.bandwidth_fractions = [req / threshold_requirements_sum for req in self.threshold_requirements]
         
-        self.precision = 1
+        self.agent.update_quantums(self.quantums, self.slices)
 
     
     def run(self, n_episodes):
         statistics = Statistics(self.slices)
         interval = 1
-        iterations = 0
 
         for i in range(n_episodes):
-            Run_every_interval_seconds = True
-
             state_spaces = self.influxController.get_stats()
             throughputs = [tp / 1000000 for tp in state_spaces]
+            throughputs = np.asarray(throughputs)
             all_throughputs_met = all([throughput > requirement for (throughput, requirement) in zip(throughputs, self.threshold_requirements)])
 
-            while Run_every_interval_seconds:
-                done = True
-                #Learning only when one of the slice throughputs is not met.  
-
-                state_spaces = self.influxController.get_stats()
-                throughputs = [tp / 1000000 for tp in state_spaces]
-                throughputs = np.asarray(throughputs)
-
-                action = self.agent.choose_action(throughputs)
-                if not all_throughputs_met or i < 2000:
-                    new_quantums = self.agent.execute_action(action, self.quantums, i, self.threshold_fractions)
-                    self.quantums = new_quantums
-                
-                sleep(interval - time() % interval)
-
-                state_spaces = self.influxController.get_stats()
-                new_throughputs = [tp / 1000000 for tp in state_spaces]
-                new_throughputs = np.asarray(throughputs)
-                
-                if not all_throughputs_met or i < 2000:
-                    reward = self.agent.get_reward(self.threshold_requirements, new_throughputs)
-                    self.agent.remember(throughputs, action, reward, new_throughputs, int(done))
-                    throughputs = new_throughputs
-                    #pdb.set_trace()
-                    loss = self.agent.learn()
-
-                #   	 pdb.set_trace()
-                iterations += 1
-                Run_every_interval_seconds = False #Controlling the loop to run every Intervsa seconds
-
-                statistics.storeTimestep(throughputs, self.quantums, reward, self.agent.action_possibilities[action])
+            action = self.agent.choose_action(throughputs)
+            if not all_throughputs_met or i < 2000:
+                new_quantums = self.agent.execute_action(action, self.quantums, i, self.bandwidth_fractions)
+                self.quantums = new_quantums
             
+            sleep(interval - time() % interval)
+
+            state_spaces = self.influxController.get_stats()
+            new_throughputs = [tp / 1000000 for tp in state_spaces]
+            new_throughputs = np.asarray(throughputs)
+            
+            if not all_throughputs_met or i < 2000:
+                reward = self.agent.get_reward(self.threshold_requirements, new_throughputs)
+                self.agent.remember(throughputs, action, reward, new_throughputs, int(False))
+                throughputs = new_throughputs
+                #pdb.set_trace()
+                loss = self.agent.learn()
+
+            #   	 pdb.set_trace()
+
+            statistics.storeTimestep(throughputs, self.quantums, reward, self.agent.action_possibilities[action])
             statistics.writeEpisodeStats()
 
-            if iterations % 100 == 0 and iterations > 0:
+            if i % 100 == 0 and i > 0:
                 self.agent.save_model()
         #    if i % 500 == 0 and i > 0:
                 
@@ -139,5 +122,16 @@ class Controller(object):
 
 
 if __name__ == '__main__':
-    controller = Controller(learning_rate=0.005, slices=3)
+    slice_ids = [0, 8, 16, 20, 30, 44, 46, 48]
+    slice_required_throughputs = [
+        1, # DSCP 0: Best effort
+        2, # DSCP 8: Low priority (Video surveillance)
+        1, # DSCP 16: ??
+        0.5, # DSCP 20: Network operations
+        2.5, # DSCP 30: Video
+        1, # DSCP 44: Voice
+        1.5, # DSCP 46: Critical data
+        0.5, # DSCP 48: Network control
+    ]
+    controller = Controller(learning_rate=0.005, slices=slice_ids, required_throughputs=slice_required_throughputs)
     controller.run(n_episodes=10000)
