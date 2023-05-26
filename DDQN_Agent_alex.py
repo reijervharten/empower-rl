@@ -155,13 +155,12 @@ class Agent(object):
                 json={"properties": {"quantum": airtime, "sta_scheduler": 2}}) # Station Scheduler is 1 for Deficit Round Robin and 2 for Airtime Deficit Round Robin
 
 
-    def get_reward(self, threshold_requirements, throughputs):
-        score = len([i for i in range(len(self.slices)) if throughputs[i] >= threshold_requirements[i]])
+    def get_reward(self, excess_throughputs):
+        score = len([i for i in range(len(self.slices)) if excess_throughputs[i] >= 0])
         if score == 0:
             return -5
         else: 
             return score
-        
 
 
     def learn(self):

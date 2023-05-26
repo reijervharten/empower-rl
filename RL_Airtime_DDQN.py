@@ -10,9 +10,10 @@ class Statistics(object):
     def __init__(self, slices):
         self.precision = 6
 
-        self.log_file = open("Throughput_E1.csv", "w")
+        self.log_file = open("Throughput_E2.csv", "w")
         self.log_data = csv.writer(self.log_file, delimiter=',')
         csv_header = ['Slice_{}_Throughput'.format(n) for n in slices] + \
+                        ['Number_of_throughputs_met'] + \
                         ['Slice_{}_Quantum'.format(n) for n in slices] + \
                         ['Slice_{}_Action'.format(n) for n in slices]  + \
                         ['Reward', 'Mean_Over_Time_in_Seconds']
@@ -40,7 +41,7 @@ class Statistics(object):
 
     
     def writeEpisodeStats(self):
-        data = self.throughputs[-1] + self.quantums[-1] + self.actions[-1] + [self.rewards[-1]] 
+        data = self.throughputs[-1] + [len([tp for tp in self.throughputs[-1] if tp > 0])] + self.quantums[-1] + self.actions[-1] + [self.rewards[-1]] 
         self.log_data.writerow(data)
 
 
@@ -72,32 +73,31 @@ class Controller(object):
         interval = 1
 
         for i in range(n_episodes):
-            state_spaces = self.influxController.get_stats()
-            throughputs = [tp / 1000000 for tp in state_spaces]
+            throughputs = self.influxController.get_stats()
             throughputs = np.asarray(throughputs)
+            excess_throughputs = throughputs - self.threshold_requirements
             all_throughputs_met = all([throughput > requirement for (throughput, requirement) in zip(throughputs, self.threshold_requirements)])
 
-            action = self.agent.choose_action(throughputs)
+            action = self.agent.choose_action(excess_throughputs)
             if not all_throughputs_met or i < 2000:
                 new_quantums = self.agent.execute_action(action, self.quantums, i, self.bandwidth_fractions)
                 self.quantums = new_quantums
             
             sleep(interval - time() % interval)
 
-            state_spaces = self.influxController.get_stats()
-            new_throughputs = [tp / 1000000 for tp in state_spaces]
+            new_throughputs = self.influxController.get_stats()
             new_throughputs = np.asarray(throughputs)
+            new_excess_throughputs = new_throughputs - self.threshold_requirements
             
             if not all_throughputs_met or i < 2000:
-                reward = self.agent.get_reward(self.threshold_requirements, new_throughputs)
-                self.agent.remember(throughputs, action, reward, new_throughputs, int(False))
-                throughputs = new_throughputs
+                reward = self.agent.get_reward(new_excess_throughputs)
+                self.agent.remember(throughputs, action, reward, new_excess_throughputs, int(False))
                 #pdb.set_trace()
                 loss = self.agent.learn()
 
             #   	 pdb.set_trace()
 
-            statistics.storeTimestep(throughputs, self.quantums, reward, self.agent.action_possibilities[action])
+            statistics.storeTimestep(new_excess_throughputs, self.quantums, reward, self.agent.action_possibilities[action])
             statistics.writeEpisodeStats()
 
             if i % 100 == 0 and i > 0:

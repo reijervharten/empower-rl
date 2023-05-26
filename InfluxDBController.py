@@ -33,7 +33,7 @@ class InfluxDBController(object):
             slice_id = slice_stats['tags']['slice_id']
             first = slice_stats['values'][0][1]
             last = slice_stats['values'][0][2]
-            bandwidth = (last - first) / 30
+            bandwidth = (last - first) / 30 / 1000000
 
             results.append((slice_id, bandwidth))
         
