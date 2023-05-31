@@ -10,10 +10,9 @@ class Statistics(object):
     def __init__(self, slices):
         self.precision = 6
 
-        self.log_file = open("Throughput_E3.csv", "w")
+        self.log_file = open("Throughput_E4.csv", "w")
         self.log_data = csv.writer(self.log_file, delimiter=',')
         csv_header = ['Slice_{}_Throughput'.format(n) for n in slices] + \
-                        ['Number_of_throughputs_met'] + \
                         ['Slice_{}_Quantum'.format(n) for n in slices] + \
                         ['Slice_{}_Action'.format(n) for n in slices]  + \
                         ['Reward', 'Mean_Over_Time_in_Seconds']
@@ -39,9 +38,8 @@ class Statistics(object):
         means = [round(np.mean(slice_throughputs), self.precision) for slice_throughputs in np.transpose(self.throughputs)]
         self.means.append(means)
 
-    
-    def writeEpisodeStats(self):
-        data = self.throughputs[-1] + [len([tp for tp in self.throughputs[-1] if tp > 0])] + self.quantums[-1] + self.actions[-1] + [self.rewards[-1]] 
+        print(self.throughputs, self.quantums, self.actions, self.rewards)
+        data = self.throughputs[-1] + self.quantums[-1] + self.actions[-1].tolist() + [self.rewards[-1]] 
         self.log_data.writerow(data)
 
 
