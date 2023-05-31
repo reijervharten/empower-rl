@@ -10,7 +10,7 @@ class Statistics(object):
     def __init__(self, slices):
         self.precision = 6
 
-        self.log_file = open("Throughput_E2.csv", "w")
+        self.log_file = open("Throughput_E3.csv", "w")
         self.log_data = csv.writer(self.log_file, delimiter=',')
         csv_header = ['Slice_{}_Throughput'.format(n) for n in slices] + \
                         ['Number_of_throughputs_met'] + \
@@ -70,7 +70,7 @@ class Controller(object):
     
     def run(self, n_episodes):
         statistics = Statistics(self.slices)
-        interval = 1
+        interval = 30
 
         for i in range(n_episodes):
             throughputs = self.influxController.get_stats()
