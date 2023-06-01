@@ -44,12 +44,14 @@ class Environment:
         sleep(episode_interval_seconds)
         new_throughputs = self.influxController.get_stats()
         reward = 0
-        for tp, goal in zip(new_throughputs, slice_required_throughputs):
+        for id, tp, goal in zip(slice_ids, new_throughputs, slice_required_throughputs):
             if tp > goal:
-                reward += 1
+                if tp < 1.1 * goal:
+                    reward += 1
             else:
                 tp = max(tp, 0)
-                reward += tp/goal
+                weighted_error = id * (goal - tp) / (50 * goal)
+                reward -= weighted_error * weighted_error
 
         self.statistics.storeTimestep(new_throughputs, self.quantums, reward, action)
 
