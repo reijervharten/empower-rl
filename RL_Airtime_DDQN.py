@@ -38,7 +38,6 @@ class Statistics(object):
         means = [round(np.mean(slice_throughputs), self.precision) for slice_throughputs in np.transpose(self.throughputs)]
         self.means.append(means)
 
-        print(self.throughputs[-1], self.quantums[-1], self.actions[-1], self.rewards[-1])
         data = self.throughputs[-1] + self.quantums[-1] + self.actions[-1].tolist() + [self.rewards[-1]] 
         self.log_data.writerow(data)
 

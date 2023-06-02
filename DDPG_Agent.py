@@ -8,8 +8,8 @@ from RL_Airtime_DDQN import Statistics
 
 env = Environment()
 
-num_states = 8
-num_actions = 8
+num_states = env.num_slices
+num_actions = env.num_slices
 
 upper_bound = 50000
 lower_bound = 0
@@ -142,7 +142,7 @@ def get_actor():
     out = layers.Dense(256, activation="relu")(out)
     outputs = layers.Dense(num_actions, activation="sigmoid", kernel_initializer=last_init)(out)
 
-    # Our upper bound is 2.0 for Pendulum.
+    #TODO: correct?
     outputs = outputs * upper_bound + lower_bound
     model = tf.keras.Model(inputs, outputs)
     return model
@@ -174,7 +174,6 @@ def get_critic():
 def policy(state, noise_object):
     sampled_actions = tf.squeeze(actor_model(state))
     noise = noise_object()
-    print(noise)
     # TODO should noise be one value or an array?
     # Adding noise to action
     sampled_actions = sampled_actions.numpy() + noise

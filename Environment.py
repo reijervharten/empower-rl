@@ -4,21 +4,22 @@ import requests
 from InfluxDBController import InfluxDBController
 from RL_Airtime_DDQN import Statistics
 
-slice_ids = [0, 8, 16, 20, 30, 44, 46, 48]
+slice_ids = [0, 8, 16] #, 20, 30, 44, 46, 48]
 slice_required_throughputs = [
     1, # DSCP 0: Best effort
     2, # DSCP 8: Low priority (Video surveillance)
-    1, # DSCP 16: ??
-    0.5, # DSCP 20: Network operations
-    2.5, # DSCP 30: Video
-    1, # DSCP 44: Voice
-    1.5, # DSCP 46: Critical data
-    0.5, # DSCP 48: Network control
-]
+    1]#, # DSCP 16: ??
+#     0.5, # DSCP 20: Network operations
+#     2.5, # DSCP 30: Video
+#     1, # DSCP 44: Voice
+#     1.5, # DSCP 46: Critical data
+#     0.5, # DSCP 48: Network control
+# ]
 episode_interval_seconds = 30
 
 class Environment:
     def __init__(self):
+        self.num_slices = len(slice_ids)
         self.influxController = InfluxDBController()
         self.statistics = Statistics(slice_ids)
         self.reset()
