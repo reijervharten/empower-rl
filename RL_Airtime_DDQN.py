@@ -10,7 +10,7 @@ class Statistics(object):
     def __init__(self, slices):
         self.precision = 6
 
-        self.log_file = open("Throughput_E6.csv", "w")
+        self.log_file = open("Throughput_E7.csv", "w")
         self.log_data = csv.writer(self.log_file, delimiter=',')
         csv_header = ['Slice_{}_Throughput'.format(n) for n in slices] + \
                         ['Slice_{}_Quantum'.format(n) for n in slices] + \

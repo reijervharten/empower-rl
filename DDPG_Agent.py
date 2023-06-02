@@ -45,7 +45,7 @@ class OUActionNoise:
 
 
 class Buffer:
-    def __init__(self, buffer_capacity=100000, batch_size=64):
+    def __init__(self, buffer_capacity=100000, batch_size=20):
         # Number of "experiences" to store at max
         self.buffer_capacity = buffer_capacity
         # Num of tuples to train on.
@@ -110,10 +110,13 @@ class Buffer:
 
     # We compute the loss and update parameters
     def learn(self):
+        if (self.buffer_counter < self.batch_size):
+            return
+        
         # Get sampling range
         record_range = min(self.buffer_counter, self.buffer_capacity)
         # Randomly sample indices
-        batch_indices = np.random.choice(record_range, self.batch_size)
+        batch_indices = np.random.choice(record_range, self.batch_size, replace=False)
 
         # Convert to tensors
         state_batch = tf.convert_to_tensor(self.state_buffer[batch_indices])
@@ -174,7 +177,6 @@ def get_critic():
 def policy(state, noise_object):
     sampled_actions = tf.squeeze(actor_model(state))
     noise = noise_object()
-    print(noise)
     # TODO should noise be one value or an array?
     # Adding noise to action
     sampled_actions = sampled_actions.numpy() + noise
@@ -222,8 +224,12 @@ prev_state = env.reset()
 # Takes about 4 min to train
 for ep in range(total_episodes):
     tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
+    
+    if (ep < 20):
+        action = np.random.rand(num_actions) * upper_bound + lower_bound
+    else:
+        action = policy(tf_prev_state, ou_noise)
 
-    action = policy(tf_prev_state, ou_noise)
     # Recieve state and reward from environment.
     state, reward = env.step(action)
 
