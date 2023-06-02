@@ -15,7 +15,7 @@ slice_required_throughputs = [
 #     1.5, # DSCP 46: Critical data
 #     0.5, # DSCP 48: Network control
 # ]
-episode_interval_seconds = 30
+episode_interval_seconds = 10
 
 class Environment:
     def __init__(self):
@@ -43,16 +43,19 @@ class Environment:
         self.update_quantums()
 
         sleep(episode_interval_seconds)
-        new_throughputs = self.influxController.get_stats()
-        reward = 0
+        new_throughputs = []
+        throughput_pairs = self.influxController.get_stats()
+        for id in slice_ids:
+            matching_pair = next(filter(lambda pair: pair[0] == str(id), throughput_pairs), None)
+            new_throughputs.append(matching_pair[1])
+
+        print(new_throughputs)
+
+        reward = 300
         for id, tp, goal in zip(slice_ids, new_throughputs, slice_required_throughputs):
-            if tp > goal:
-                if tp < 1.1 * goal:
-                    reward += 1
-            else:
-                tp = max(tp, 0)
-                weighted_error = id * (goal - tp) / (50 * goal)
-                reward -= weighted_error * weighted_error
+            tp = max(tp, 0)
+            weighted_error = id * (goal - tp) / (20 * goal)
+            reward -= 100*weighted_error * weighted_error
 
         self.statistics.storeTimestep(new_throughputs, self.quantums, reward, action)
 

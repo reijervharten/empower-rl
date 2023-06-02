@@ -174,6 +174,7 @@ def get_critic():
 def policy(state, noise_object):
     sampled_actions = tf.squeeze(actor_model(state))
     noise = noise_object()
+    print(noise)
     # TODO should noise be one value or an array?
     # Adding noise to action
     sampled_actions = sampled_actions.numpy() + noise
