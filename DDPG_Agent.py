@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import tensorflow as tf
 from keras import layers
@@ -10,8 +11,8 @@ env = Environment()
 num_states = env.num_slices
 num_actions = env.num_slices
 
-upper_bound = 50000
-lower_bound = 0
+upper_bound = env.upper_bound
+lower_bound = env.lower_bound
 
 
 # Implementation taken from https://keras.io/examples/rl/ddpg_pendulum/
@@ -227,19 +228,42 @@ avg_reward_list = []
 prev_state = env.reset()
 
 #pre-train using approximations
-for i in range(500):
-    actions = [np.random.rand(num_actions) * upper_bound + lower_bound for _ in range(buffer.batch_size)]
+pre_trained_model_name = "pre-trained_model_e9"
+if os.path.exists(pre_trained_model_name + '_actor.h5'):
+    actor_model.load_weights(pre_trained_model_name + '_actor.h5')
+    critic_model.load_weights(pre_trained_model_name + '_critic.h5')
+    target_actor.load_weights(pre_trained_model_name + '_target_actor.h5')
+    target_critic.load_weights(pre_trained_model_name + '_target_critic.h5')
+    print("Loaded pre-trained model")
+else:
+    for _ in range(100):
+        states = []
+        actions = []
 
-    throughput_samples = env.get_throughputs()
-    states = []
-    for _ in range(buffer.batch_size):
-        offsets = np.random.rand(num_states) * 0.2 - 0.1 # Values between -0.1 and 0.1
-        states.append([tp + offset for tp, offset in zip(throughput_samples, offsets)])
+        for _ in range(buffer.batch_size):
+            throughput_sample = env.get_throughputs()
+            offsets = np.random.rand(num_states) * 0.2 - 0.1 # Values between -0.1 and 0.1
+            state = [tp + offset for tp, offset in zip(throughput_sample, offsets)]
+            action = policy(tf.expand_dims(tf.convert_to_tensor(state), 0), ou_noise)
 
-    next_states = [env.approximate_next_state(state, action) for state, action in zip(states, actions)]
-    rewards = [env.approximate_reward(next_state) for next_state in next_states]
+            states.append(state)
+            actions.append(action)
 
-    buffer.update(states, actions, rewards, next_states)
+        next_states = [env.approximate_next_state(state, action) for state, action in zip(states, actions)]
+        rewards = [env.approximate_reward(next_state) for next_state in next_states]
+
+        print(states[0], actions[0], rewards[0], next_states[0])
+
+        buffer.update(states, actions, rewards, next_states)
+
+        update_target(target_actor.variables, actor_model.variables, tau)
+        update_target(target_critic.variables, critic_model.variables, tau)
+
+    actor_model.save_weights(pre_trained_model_name + '_actor.h5')
+    critic_model.save_weights(pre_trained_model_name + '_critic.h5')
+    target_actor.save_weights(pre_trained_model_name + '_target_actor.h5')
+    target_critic.save_weights(pre_trained_model_name + '_target_critic.h5')
+    print("Generated and saved pre-trained model")
 
 for ep in range(total_episodes):
     tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)

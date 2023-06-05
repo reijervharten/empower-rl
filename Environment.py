@@ -1,4 +1,5 @@
 from time import sleep
+import numpy as np
 import requests
 
 from InfluxDBController import InfluxDBController
@@ -19,6 +20,9 @@ episode_interval_seconds = 10
 
 class Environment:
     def __init__(self):
+        self.upper_bound = 50000
+        self.lower_bound = 0
+
         self.num_slices = len(slice_ids)
         self.influxController = InfluxDBController()
         self.statistics = Statistics(slice_ids, "Throughput_E8.csv")
@@ -47,11 +51,12 @@ class Environment:
         return throughputs
     
     def calculate_reward(self, throughputs):
-        reward = 300
+        reward = 6000
         for id, tp, goal in zip(slice_ids, throughputs, slice_required_throughputs):
-            tp = max(tp, 0)
-            weighted_error = (goal - tp)
-            reward -= 100*weighted_error * weighted_error
+            if (tp < goal):
+                tp = max(tp, 0)
+                weighted_error = (goal - tp)
+                reward -= 100*weighted_error * weighted_error
         
         return reward
     
@@ -72,6 +77,8 @@ class Environment:
     def approximate_next_state(self, state, action):
         total_throughput = sum(state)
         next_state = []
+
+        action += np.random.rand(len(action)) *1000
         
         for action_value in action:
             fraction = action_value / sum(action)
