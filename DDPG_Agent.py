@@ -4,7 +4,6 @@ from keras import layers
 import matplotlib.pyplot as plt
 
 from Environment import Environment
-from RL_Airtime_DDQN import Statistics
 
 env = Environment()
 
@@ -81,6 +80,13 @@ class Buffer:
     def update(
         self, state_batch, action_batch, reward_batch, next_state_batch,
     ):
+        
+        state_batch = tf.convert_to_tensor(state_batch)
+        action_batch = tf.convert_to_tensor(action_batch)
+        reward_batch = tf.convert_to_tensor(reward_batch)
+        reward_batch = tf.cast(reward_batch, dtype=tf.float32)
+        next_state_batch = tf.convert_to_tensor(next_state_batch)
+
         # Training and updating Actor & Critic networks.
         # See Pseudo Code.
         with tf.GradientTape() as tape:
@@ -119,11 +125,10 @@ class Buffer:
         batch_indices = np.random.choice(record_range, self.batch_size, replace=False)
 
         # Convert to tensors
-        state_batch = tf.convert_to_tensor(self.state_buffer[batch_indices])
-        action_batch = tf.convert_to_tensor(self.action_buffer[batch_indices])
-        reward_batch = tf.convert_to_tensor(self.reward_buffer[batch_indices])
-        reward_batch = tf.cast(reward_batch, dtype=tf.float32)
-        next_state_batch = tf.convert_to_tensor(self.next_state_buffer[batch_indices])
+        state_batch = self.state_buffer[batch_indices]
+        action_batch = self.action_buffer[batch_indices]
+        reward_batch = self.reward_buffer[batch_indices]
+        next_state_batch = self.next_state_buffer[batch_indices]
 
         self.update(state_batch, action_batch, reward_batch, next_state_batch)
 
@@ -221,14 +226,28 @@ avg_reward_list = []
 
 prev_state = env.reset()
 
-# Takes about 4 min to train
+#pre-train using approximations
+for i in range(500):
+    actions = [np.random.rand(num_actions) * upper_bound + lower_bound for _ in range(buffer.batch_size)]
+
+    throughput_samples = env.get_throughputs()
+    states = []
+    for _ in range(buffer.batch_size):
+        offsets = np.random.rand(num_states) * 0.2 - 0.1 # Values between -0.1 and 0.1
+        states.append([tp + offset for tp, offset in zip(throughput_samples, offsets)])
+
+    next_states = [env.approximate_next_state(state, action) for state, action in zip(states, actions)]
+    rewards = [env.approximate_reward(next_state) for next_state in next_states]
+
+    buffer.update(states, actions, rewards, next_states)
+
 for ep in range(total_episodes):
     tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
     
-    if (ep < 20):
-        action = np.random.rand(num_actions) * upper_bound + lower_bound
-    else:
-        action = policy(tf_prev_state, ou_noise)
+    # if (ep < 20):
+    #     action = np.random.rand(num_actions) * upper_bound + lower_bound
+    # else:
+    action = policy(tf_prev_state, ou_noise)
 
     # Recieve state and reward from environment.
     state, reward = env.step(action)

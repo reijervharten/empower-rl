@@ -2,7 +2,7 @@ from time import sleep
 import requests
 
 from InfluxDBController import InfluxDBController
-from RL_Airtime_DDQN import Statistics
+from Statistics import Statistics
 
 slice_ids = [0, 8, 16] #, 20, 30, 44, 46, 48]
 slice_required_throughputs = [
@@ -21,7 +21,7 @@ class Environment:
     def __init__(self):
         self.num_slices = len(slice_ids)
         self.influxController = InfluxDBController()
-        self.statistics = Statistics(slice_ids)
+        self.statistics = Statistics(slice_ids, "Throughput_E8.csv")
         self.reset()
 
     def reset(self):
@@ -46,6 +46,15 @@ class Environment:
             throughputs.append(matching_pair[1])
         return throughputs
     
+    def calculate_reward(self, throughputs):
+        reward = 300
+        for id, tp, goal in zip(slice_ids, throughputs, slice_required_throughputs):
+            tp = max(tp, 0)
+            weighted_error = (goal - tp)
+            reward -= 100*weighted_error * weighted_error
+        
+        return reward
+    
     def step(self, action):
         self.quantums = action
         self.update_quantums()
@@ -53,16 +62,23 @@ class Environment:
         sleep(episode_interval_seconds)
         new_throughputs = self.get_throughputs()
 
-        print(new_throughputs)
-
-        reward = 300
-        for id, tp, goal in zip(slice_ids, new_throughputs, slice_required_throughputs):
-            tp = max(tp, 0)
-            weighted_error = (goal - tp)
-            reward -= 100*weighted_error * weighted_error
+        reward = self.calculate_reward(new_throughputs)        
 
         self.statistics.storeTimestep(new_throughputs, self.quantums, reward, action)
 
         state = new_throughputs
         return state, reward
+    
+    def approximate_next_state(self, state, action):
+        total_throughput = sum(state)
+        next_state = []
+        
+        for action_value in action:
+            fraction = action_value / sum(action)
+            next_state.append(total_throughput * fraction)
+        
+        return next_state
+    
+    def approximate_reward(self, next_state):
+        return self.calculate_reward(next_state)
     
