@@ -213,7 +213,7 @@ actor_lr = 0.001
 critic_optimizer = tf.keras.optimizers.Adam(critic_lr)
 actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
 
-total_episodes = 50000
+total_episodes = 6400000
 # Discount factor for future rewards
 gamma = 0.2
 # Used to update target networks
@@ -274,13 +274,13 @@ prev_state = env.reset()
 # print(tf.squeeze(critic_model([temp, tf.expand_dims(tf.convert_to_tensor([0,30000,50000]), 0)])))
 # print(tf.squeeze(critic_model([temp, tf.expand_dims(tf.convert_to_tensor([0,0,50000]), 0)])))
 
-actor_model.load_weights("e10g/model_actor_27100.h5")
-critic_model.load_weights("e10g/model_critic_27100.h5")
-target_actor.load_weights("e10g/model_target_actor_27100.h5")
-target_critic.load_weights("e10g/model_target_critic_27100.h5")
+# actor_model.load_weights("e10g/model_actor_27100.h5")
+# critic_model.load_weights("e10g/model_critic_27100.h5")
+# target_actor.load_weights("e10g/model_target_actor_27100.h5")
+# target_critic.load_weights("e10g/model_target_critic_27100.h5")
 
 t0 = time.time()
-for ep in range(27100, total_episodes):
+for ep in range(0, total_episodes):
     tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
     
     # if (ep < 20):
@@ -289,7 +289,7 @@ for ep in range(27100, total_episodes):
     action = policy(tf_prev_state, ou_noise)
 
     # Recieve state and reward from environment.
-    state, reward = env.step(action)
+    state, reward = env.step(action, True)
 
     buffer.record((prev_state, action, reward, state))
     buffer.learn()
@@ -301,17 +301,17 @@ for ep in range(27100, total_episodes):
 
     ep_reward_list.append(reward)
 
-    if ep % 100 == 0:
+    if ep % 1000 == 0:
         # Mean of last 500 episodes
-        avg_reward = np.mean(ep_reward_list[-100:])
+        avg_reward = np.mean(ep_reward_list[-1000:])
         print("Episode * {} * Avg Reward is ==> {}".format(ep, avg_reward))
         avg_reward_list.append(avg_reward)
         print("Episode {} / {}, time: {}".format(ep, total_episodes, time.time() - t0))
 
-        actor_model.save_weights("e10h/model_actor_{}.h5".format(ep))
-        critic_model.save_weights("e10h/model_critic_{}.h5".format(ep))
-        target_actor.save_weights("e10h/model_target_actor_{}.h5".format(ep))
-        target_critic.save_weights("e10h/model_target_critic_{}.h5".format(ep))
+        # actor_model.save_weights("e10h/model_actor_{}.h5".format(ep))
+        # critic_model.save_weights("e10h/model_critic_{}.h5".format(ep))
+        # target_actor.save_weights("e10h/model_target_actor_{}.h5".format(ep))
+        # target_critic.save_weights("e10h/model_target_critic_{}.h5".format(ep))
 # Plotting graph
 # Episodes versus Avg. Rewards
 plt.plot(avg_reward_list)

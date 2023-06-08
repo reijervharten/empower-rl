@@ -1,3 +1,4 @@
+import random
 from time import sleep
 import numpy as np
 import requests
@@ -25,12 +26,13 @@ class Environment:
 
         self.num_slices = len(slice_ids)
         self.influxController = InfluxDBController()
-        self.statistics = Statistics(slice_ids, "Throughput_E10h.csv")
+        self.statistics = Statistics(slice_ids, "Throughput_E11.csv")
         self.reset()
 
     def reset(self):
         self.quantums = [12500 for _ in slice_ids]
         self.update_quantums()
+        self.prev_state = [0.4, 0.4, 0.4]
 
         return self.get_throughputs()
     
@@ -66,18 +68,29 @@ class Environment:
         
         return reward
     
-    def step(self, action):
+    def step(self, action, simulate=False):
         self.quantums = action
-        self.update_quantums()
 
-        sleep(episode_interval_seconds)
-        new_throughputs = self.get_throughputs()
+        if simulate:
+            throughput_sum = sum(self.prev_state) + (random.random() * 2 - 1) * 0.1 # Random value between -0.1 and 0.1
+            throughput_sum = max(throughput_sum, 0.8)
+            throughput_sum = min(throughput_sum, 1.2)
+            quantum_sum = sum(action)
+            new_throughputs = [throughput_sum * quantum / quantum_sum for quantum in action]
+            reward = self.calculate_reward(new_throughputs)
+        
+        else:
+            self.update_quantums()
 
-        reward = self.calculate_reward(new_throughputs)        
+            sleep(episode_interval_seconds)
+            new_throughputs = self.get_throughputs()
+
+            reward = self.calculate_reward(new_throughputs)        
 
         self.statistics.storeTimestep(new_throughputs, self.quantums, reward, action)
 
         state = new_throughputs
+        self.prev_state = state
         return state, reward
     
     def approximate_next_state(self, state, action):
