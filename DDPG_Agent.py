@@ -150,9 +150,8 @@ def get_actor():
     inputs = layers.Input(shape=(num_states))
     out = layers.Dense(256, activation="relu")(inputs)
     out = layers.Dense(256, activation="relu")(out)
-    outputs = layers.Dense(num_actions, activation="sigmoid", kernel_initializer=last_init)(out)
+    outputs = layers.Dense(num_actions, activation="softmax", kernel_initializer=last_init)(out)
 
-    #TODO: correct?
     outputs = outputs * upper_bound + lower_bound
     model = tf.keras.Model(inputs, outputs)
     return model
