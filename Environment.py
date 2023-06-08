@@ -5,18 +5,18 @@ import requests
 from InfluxDBController import InfluxDBController
 from Statistics import Statistics
 
-slice_ids = [0, 8, 16] #, 20, 30, 44, 46, 48]
+slice_ids = [0, 8, 18] #, 20, 30, 44, 46, 48]
 slice_required_throughputs = [
     0, # DSCP 0: Best effort
-    4, # DSCP 8: Low priority (Video surveillance)
-    8]#, # DSCP 16: ??
+    0.3, # DSCP 8: Low priority (Video surveillance)
+    0.6]#, # DSCP 16: ??
 #     0.5, # DSCP 20: Network operations
 #     2.5, # DSCP 30: Video
 #     1, # DSCP 44: Voice
 #     1.5, # DSCP 46: Critical data
 #     0.5, # DSCP 48: Network control
 # ]
-episode_interval_seconds = 10
+episode_interval_seconds = 4
 
 class Environment:
     def __init__(self):
@@ -25,7 +25,7 @@ class Environment:
 
         self.num_slices = len(slice_ids)
         self.influxController = InfluxDBController()
-        self.statistics = Statistics(slice_ids, "Throughput_E8.csv")
+        self.statistics = Statistics(slice_ids, "Throughput_E10h.csv")
         self.reset()
 
     def reset(self):
@@ -47,7 +47,13 @@ class Environment:
         throughput_pairs = self.influxController.get_stats()
         for id in slice_ids:
             matching_pair = next(filter(lambda pair: pair[0] == str(id), throughput_pairs), None)
-            throughputs.append(matching_pair[1])
+            if not matching_pair == None:
+                throughputs.append(matching_pair[1])
+            else:
+                throughputs.append(0)
+
+        if sum(throughputs) > 1.1:
+            throughputs = [tp / sum(throughputs) * 1.1 for tp in throughputs]
         return throughputs
     
     def calculate_reward(self, throughputs):
@@ -55,7 +61,7 @@ class Environment:
         for id, tp, goal in zip(slice_ids, throughputs, slice_required_throughputs):
             if (tp < goal):
                 tp = max(tp, 0)
-                weighted_error = (goal - tp)
+                weighted_error = 10*(goal - tp)
                 reward -= 100*weighted_error * weighted_error
         
         return reward
@@ -78,7 +84,7 @@ class Environment:
         total_throughput = sum(state)
         next_state = []
 
-        action += np.random.rand(len(action)) *1000
+        #action += np.random.rand(len(action)) *200
         
         for action_value in action:
             fraction = action_value / sum(action)

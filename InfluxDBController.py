@@ -16,7 +16,7 @@ class InfluxDBController(object):
         self.query2 = 'SELECT mean("tx_bps") FROM "empower.apps.lvapbincounter.lvapbincounter" WHERE ("sta"=$var_name) AND time >= now() - 30s and time <= now()'
         self.query3 = 'SELECT first("tx_bytes"), last("tx_bytes") ' + \
                             'FROM "empower.apps.wifislicestats.wifislicestats" ' + \
-                            'WHERE time >= now() - 10s and time <= now() ' + \
+                            'WHERE time >= now() - 4s and time <= now() ' + \
                             'GROUP BY "slice_id"::tag '
         self.client = InfluxDBClient(self.host, self.port, self.user, self.password, self.dbname)
 
