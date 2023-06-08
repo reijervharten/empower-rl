@@ -149,7 +149,7 @@ def get_actor():
 
     inputs = layers.Input(shape=(num_states))
     out = layers.Dense(256, activation="relu")(inputs)
-    out = layers.Dense(256, activation="relu")(out)
+    out = layers.Dense(128, activation="relu")(out)
     outputs = layers.Dense(num_actions, activation="softmax", kernel_initializer=last_init)(out)
 
     outputs = outputs * upper_bound + lower_bound
@@ -171,7 +171,7 @@ def get_critic():
     concat = layers.Concatenate()([state_out, action_out])
 
     out = layers.Dense(256, activation="relu")(concat)
-    out = layers.Dense(256, activation="relu")(out)
+    out = layers.Dense(128, activation="relu")(out)
     outputs = layers.Dense(1)(out)
 
     # Outputs single value for give state-action
@@ -227,57 +227,6 @@ avg_reward_list = []
 
 prev_state = env.reset()
 
-#pre-train using approximations
-# pre_trained_model_name = "pre-trained_model_e10b"
-# if os.path.exists(pre_trained_model_name + '_actor.h5'):
-#     actor_model.load_weights(pre_trained_model_name + '_actor.h5')
-#     critic_model.load_weights(pre_trained_model_name + '_critic.h5')
-#     target_actor.load_weights(pre_trained_model_name + '_target_actor.h5')
-#     target_critic.load_weights(pre_trained_model_name + '_target_critic.h5')
-#     print("Loaded pre-trained model")
-# # else:
-#     for _ in range(100):
-#         states = []
-#         actions = []
-
-#         for _ in range(buffer.batch_size):
-#             throughput_sample = env.get_throughputs()
-#             offsets = np.random.rand(num_states) * 0.2 - 0.1 # Values between -0.1 and 0.1
-#             state = [tp + offset for tp, offset in zip(throughput_sample, offsets)]
-#             action = np.random.rand(num_actions) * upper_bound - lower_bound #policy(tf.expand_dims(tf.convert_to_tensor(state), 0), ou_noise)
-
-#             states.append(state)
-#             actions.append(action)
-
-#         next_states = [env.approximate_next_state(state, action) for state, action in zip(states, actions)]
-#         rewards = [env.approximate_reward(next_state) for next_state in next_states]
-
-#         print(states[0], actions[0], rewards[0], next_states[0])
-
-#         buffer.update(states, actions, rewards, next_states)
-
-#         update_target(target_actor.variables, actor_model.variables, tau)
-#         update_target(target_critic.variables, critic_model.variables, tau)
-
-#     actor_model.save_weights(pre_trained_model_name + '_actor.h5')
-#     critic_model.save_weights(pre_trained_model_name + '_critic.h5')
-#     target_actor.save_weights(pre_trained_model_name + '_target_actor.h5')
-#     target_critic.save_weights(pre_trained_model_name + '_target_critic.h5')
-#     print("Generated and saved pre-trained model")
-
-# temp = tf.expand_dims(tf.convert_to_tensor([0.3,0.3,0.3]), 0)
-# print(tf.squeeze(critic_model([temp, tf.expand_dims(tf.convert_to_tensor([0,0,0]), 0)])))
-# print(tf.squeeze(critic_model([temp, tf.expand_dims(tf.convert_to_tensor([50000,50000,50000]), 0)])))
-# print(tf.squeeze(critic_model([temp, tf.expand_dims(tf.convert_to_tensor([12500,12500,12500]), 0)])))
-# print(tf.squeeze(critic_model([temp, tf.expand_dims(tf.convert_to_tensor([50000,30000,0]), 0)])))
-# print(tf.squeeze(critic_model([temp, tf.expand_dims(tf.convert_to_tensor([0,30000,50000]), 0)])))
-# print(tf.squeeze(critic_model([temp, tf.expand_dims(tf.convert_to_tensor([0,0,50000]), 0)])))
-
-# actor_model.load_weights("e10g/model_actor_27100.h5")
-# critic_model.load_weights("e10g/model_critic_27100.h5")
-# target_actor.load_weights("e10g/model_target_actor_27100.h5")
-# target_critic.load_weights("e10g/model_target_critic_27100.h5")
-
 t0 = time.time()
 for ep in range(0, total_episodes):
     tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
@@ -306,11 +255,7 @@ for ep in range(0, total_episodes):
         print("Episode * {} * Avg Reward is ==> {}".format(ep, avg_reward))
         avg_reward_list.append(avg_reward)
         print("Episode {} / {}, time: {}".format(ep, total_episodes, time.time() - t0))
-
-        # actor_model.save_weights("e10h/model_actor_{}.h5".format(ep))
-        # critic_model.save_weights("e10h/model_critic_{}.h5".format(ep))
-        # target_actor.save_weights("e10h/model_target_actor_{}.h5".format(ep))
-        # target_critic.save_weights("e10h/model_target_critic_{}.h5".format(ep))
+        
 # Plotting graph
 # Episodes versus Avg. Rewards
 plt.plot(avg_reward_list)
