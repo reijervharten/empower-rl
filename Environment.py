@@ -26,7 +26,7 @@ class Environment:
 
         self.num_slices = len(slice_ids)
         self.influxController = InfluxDBController()
-        self.statistics = Statistics(slice_ids, "Throughput_E14.csv")
+        self.statistics = Statistics(slice_ids, "Throughput_E15.csv")
         self.reset()
 
     def reset(self):

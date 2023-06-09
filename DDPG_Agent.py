@@ -15,36 +15,6 @@ num_actions = env.num_slices
 upper_bound = env.upper_bound
 lower_bound = env.lower_bound
 
-
-# Implementation taken from https://keras.io/examples/rl/ddpg_pendulum/
-class OUActionNoise:
-    def __init__(self, mean, std_deviation, theta=0.15, dt=1e-2, x_initial=None):
-        self.theta = theta
-        self.mean = mean
-        self.std_dev = std_deviation
-        self.dt = dt
-        self.x_initial = x_initial
-        self.reset()
-
-    def __call__(self):
-        # Formula taken from https://www.wikipedia.org/wiki/Ornstein-Uhlenbeck_process.
-        x = (
-            self.x_prev
-            + self.theta * (self.mean - self.x_prev) * self.dt
-            + self.std_dev * np.sqrt(self.dt) * np.random.normal(size=self.mean.shape)
-        )
-        # Store x into x_prev
-        # Makes next noise dependent on current one
-        self.x_prev = x
-        return x
-
-    def reset(self):
-        if self.x_initial is not None:
-            self.x_prev = self.x_initial
-        else:
-            self.x_prev = np.zeros_like(self.mean)
-
-
 class Buffer:
     def __init__(self, buffer_capacity=100000, batch_size=20):
         # Number of "experiences" to store at max
@@ -177,19 +147,18 @@ def get_critic():
     return model
 
 
-def policy(state, noise_object):
+def policy(state, std_dev):
     sampled_actions = tf.squeeze(actor_model(state))
-    noise = noise_object()
     # Adding noise to action
-    sampled_actions = sampled_actions.numpy() + noise
+    sampled_actions = sampled_actions.numpy() + np.random.normal(0, std_dev, size=sampled_actions.shape)
 
     # We make sure action is within bounds
     legal_action = np.clip(sampled_actions, lower_bound, upper_bound)
 
     return np.squeeze(legal_action)
 
-std_dev = 2500
-ou_noise = OUActionNoise(mean=np.zeros(num_actions), std_deviation=float(std_dev) * np.ones(num_actions))
+max_stdev = 2500
+min_stdev = 125
 
 actor_model = get_actor()
 critic_model = get_critic()
@@ -208,7 +177,7 @@ actor_lr = 0.001
 critic_optimizer = tf.keras.optimizers.Adam(critic_lr)
 actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
 
-total_episodes = 6400000
+total_episodes = 120000
 # Discount factor for future rewards
 gamma = 0.2
 # Used to update target networks
@@ -226,18 +195,16 @@ prev_state = env.reset()
 t0 = time.time()
 for ep in range(0, total_episodes):
     tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
-    
-    # if (ep < 20):
-    #     action = np.random.rand(num_actions) * upper_bound + lower_bound
-    # else:
-    action = policy(tf_prev_state, ou_noise)
+
+    stdev = max_stdev - (ep / (total_episodes / 2)) * (max_stdev - min_stdev) # Linearly decrease stdev from max to min over 50% of episodes
+    stdev = max(stdev, min_stdev)
+    action = policy(tf_prev_state, stdev)
 
     # Recieve state and reward from environment.
     state, reward = env.step(action, True)
 
     buffer.record((prev_state, action, reward, state))
     buffer.learn()
-
     update_target(target_actor.variables, actor_model.variables, tau)
     update_target(target_critic.variables, critic_model.variables, tau)
 

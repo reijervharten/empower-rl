@@ -3,7 +3,7 @@ import csv
 from numpy import mean
 
 
-name = 'E14'
+name = 'E15'
 
 input = open('Throughput_{}.csv'.format(name), 'r')
 output = open('Throughput_{}_reduced.csv'.format(name), 'w')
