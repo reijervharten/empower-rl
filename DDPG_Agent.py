@@ -160,15 +160,12 @@ def get_actor():
 def get_critic():
     # State as input
     state_input = layers.Input(shape=(num_states))
-    state_out = layers.Dense(16, activation="relu")(state_input)
-    state_out = layers.Dense(32, activation="relu")(state_out)
 
     # Action as input
     action_input = layers.Input(shape=(num_actions))
-    action_out = layers.Dense(32, activation="relu")(action_input)
 
     # Both are passed through seperate layer before concatenating
-    concat = layers.Concatenate()([state_out, action_out])
+    concat = layers.Concatenate()([state_input, action_input])
 
     out = layers.Dense(256, activation="relu")(concat)
     out = layers.Dense(128, activation="relu")(out)
@@ -183,7 +180,6 @@ def get_critic():
 def policy(state, noise_object):
     sampled_actions = tf.squeeze(actor_model(state))
     noise = noise_object()
-    # TODO should noise be one value or an array?
     # Adding noise to action
     sampled_actions = sampled_actions.numpy() + noise
 

@@ -6,13 +6,13 @@ import requests
 from InfluxDBController import InfluxDBController
 from Statistics import Statistics
 
-slice_ids = [0, 8, 18] #, 20, 30, 44, 46, 48]
+slice_ids = [0, 8, 18, 20, 30]#, 44, 46, 48]
 slice_required_throughputs = [
-    0, # DSCP 0: Best effort
-    0.3, # DSCP 8: Low priority (Video surveillance)
-    0.6]#, # DSCP 16: ??
-#     0.5, # DSCP 20: Network operations
-#     2.5, # DSCP 30: Video
+    3, # DSCP 0: Best effort
+    1, # DSCP 8: Low priority (Video surveillance)
+    5, # DSCP 18: ??
+    1, # DSCP 20: Network operations
+    8]#, # DSCP 30: Video
 #     1, # DSCP 44: Voice
 #     1.5, # DSCP 46: Critical data
 #     0.5, # DSCP 48: Network control
@@ -21,18 +21,18 @@ episode_interval_seconds = 4
 
 class Environment:
     def __init__(self):
-        self.upper_bound = 50000
-        self.lower_bound = 0
+        self.upper_bound = 10000
+        self.lower_bound = 500
 
         self.num_slices = len(slice_ids)
         self.influxController = InfluxDBController()
-        self.statistics = Statistics(slice_ids, "Throughput_E13.csv")
+        self.statistics = Statistics(slice_ids, "Throughput_E14.csv")
         self.reset()
 
     def reset(self):
-        self.quantums = [12500 for _ in slice_ids]
+        self.quantums = [2500 for _ in slice_ids]
         self.update_quantums()
-        self.prev_state = [0.4, 0.4, 0.4]
+        self.prev_state = [4, 4, 4, 4, 4]
 
         return self.get_throughputs()
     
@@ -54,17 +54,14 @@ class Environment:
             else:
                 throughputs.append(0)
 
-        if sum(throughputs) > 1.1:
-            throughputs = [tp / sum(throughputs) * 1.1 for tp in throughputs]
         return throughputs
     
     def calculate_reward(self, throughputs):
-        reward = 6000
+        reward = 100
         for id, tp, goal in zip(slice_ids, throughputs, slice_required_throughputs):
             if (tp < goal):
                 tp = max(tp, 0)
-                weighted_error = 10*(goal - tp)
-                reward -= 100*weighted_error * weighted_error
+                reward -= (goal - tp) * (goal - tp)
         
         return reward
     
@@ -72,9 +69,9 @@ class Environment:
         self.quantums = action
 
         if simulate:
-            throughput_sum = sum(self.prev_state) + (random.random() * 2 - 1) * 0.1 # Random value between -0.1 and 0.1
-            throughput_sum = max(throughput_sum, 0.8)
-            throughput_sum = min(throughput_sum, 1.2)
+            throughput_sum = sum(self.prev_state) + (random.random() * 2 - 1) * 0.5 # Random value between -0.5 and 0.5
+            throughput_sum = max(throughput_sum, 18)
+            throughput_sum = min(throughput_sum, 22)
             quantum_sum = sum(action)
             new_throughputs = [throughput_sum * quantum / quantum_sum for quantum in action]
             reward = self.calculate_reward(new_throughputs)
