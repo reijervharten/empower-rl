@@ -1,5 +1,6 @@
 import random
 from time import sleep
+import time
 import numpy as np
 import requests
 
@@ -9,9 +10,9 @@ from Statistics import Statistics
 slice_ids = [0, 8, 18, 20, 30]#, 44, 46, 48]
 slice_required_throughputs = [
     3, # DSCP 0: Best effort
-    1, # DSCP 8: Low priority (Video surveillance)
-    5, # DSCP 18: ??
-    1, # DSCP 20: Network operations
+    0.5, # DSCP 8: Low priority (Video surveillance)
+    6, # DSCP 18: ??
+    1.5, # DSCP 20: Network operations
     8]#, # DSCP 30: Video
 #     1, # DSCP 44: Voice
 #     1.5, # DSCP 46: Critical data
@@ -26,8 +27,12 @@ class Environment:
 
         self.num_slices = len(slice_ids)
         self.influxController = InfluxDBController()
-        self.statistics = Statistics(slice_ids, "Throughput_E15.csv")
+        self.prev_test_no = "E16"
+        self.test_no = "E16a"
+        self.statistics = Statistics(slice_ids, "Throughput_{}.csv".format(self.test_no))
         self.reset()
+
+        self.prev_timestamp = time.time()
 
     def reset(self):
         self.quantums = [2500 for _ in slice_ids]
@@ -79,8 +84,19 @@ class Environment:
         else:
             self.update_quantums()
 
-            sleep(episode_interval_seconds)
-            new_throughputs = self.get_throughputs()
+            sum_throughputs = 0
+            while sum_throughputs < 12:
+                next_timestamp = self.prev_timestamp + episode_interval_seconds
+                sleep_duration = next_timestamp - time.time()
+                if (sleep_duration < 0):
+                    print("Warning: overshot next timestamp by {} seconds".format(sleep_duration))
+                    self.prev_timestamp = time.time()
+                else:
+                    sleep(sleep_duration)
+                    self.prev_timestamp = next_timestamp
+
+                new_throughputs = self.get_throughputs()
+                sum_throughputs = sum(new_throughputs)
 
             reward = self.calculate_reward(new_throughputs)        
 

@@ -157,6 +157,20 @@ def policy(state, std_dev):
 
     return np.squeeze(legal_action)
 
+def save_models(ep):
+    if not os.path.exists(env.test_no):
+        os.makedirs(env.test_no)
+    actor_model.save_weights('{}/actor_model_{}.h5'.format(env.test_no, ep))
+    critic_model.save_weights('{}/critic_model_{}.h5'.format(env.test_no, ep))
+    target_actor.save_weights('{}/target_actor_model_{}.h5'.format(env.test_no, ep))
+    target_critic.save_weights('{}/target_critic_model_{}.h5'.format(env.test_no, ep))
+
+def load_models(ep):
+    actor_model.load_weights('{}/actor_model_{}.h5'.format(env.prev_test_no, ep))
+    critic_model.load_weights('{}/critic_model_{}.h5'.format(env.prev_test_no, ep))
+    target_actor.load_weights('{}/target_actor_model_{}.h5'.format(env.prev_test_no, ep))
+    target_critic.load_weights('{}/target_critic_model_{}.h5'.format(env.prev_test_no, ep))
+
 max_stdev = 2500
 min_stdev = 125
 
@@ -192,8 +206,11 @@ avg_reward_list = []
 
 prev_state = env.reset()
 
+ep1 = 0
+#load_models(ep1)
+
 t0 = time.time()
-for ep in range(0, total_episodes):
+for ep in range(ep1, total_episodes):
     tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
 
     stdev = max_stdev - (ep / (total_episodes / 2)) * (max_stdev - min_stdev) # Linearly decrease stdev from max to min over 50% of episodes
@@ -201,7 +218,7 @@ for ep in range(0, total_episodes):
     action = policy(tf_prev_state, stdev)
 
     # Recieve state and reward from environment.
-    state, reward = env.step(action, True)
+    state, reward = env.step(action, False)
 
     buffer.record((prev_state, action, reward, state))
     buffer.learn()
@@ -212,12 +229,14 @@ for ep in range(0, total_episodes):
 
     ep_reward_list.append(reward)
 
-    if ep % 1000 == 0:
+    if ep % 100 == 0:
         # Mean of last 500 episodes
-        avg_reward = np.mean(ep_reward_list[-1000:])
+        avg_reward = np.mean(ep_reward_list[-100:])
         print("Episode * {} * Avg Reward is ==> {}".format(ep, avg_reward))
         avg_reward_list.append(avg_reward)
         print("Episode {} / {}, time: {}".format(ep, total_episodes, time.time() - t0))
+
+        save_models(ep)
         
 # Plotting graph
 # Episodes versus Avg. Rewards
