@@ -171,8 +171,8 @@ def load_models(ep):
     target_actor.load_weights('{}/target_actor_model_{}.h5'.format(env.prev_test_no, ep))
     target_critic.load_weights('{}/target_critic_model_{}.h5'.format(env.prev_test_no, ep))
 
-max_stdev = 2500
-min_stdev = 125
+max_stdev = 0#2500
+min_stdev = 0#125
 
 actor_model = get_actor()
 critic_model = get_critic()
@@ -206,8 +206,8 @@ avg_reward_list = []
 
 prev_state = env.reset()
 
-ep1 = 0
-#load_models(ep1)
+ep1 = 8200
+load_models(ep1)
 
 t0 = time.time()
 for ep in range(ep1, total_episodes):
