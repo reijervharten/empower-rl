@@ -27,8 +27,8 @@ class Environment:
 
         self.num_slices = len(slice_ids)
         self.influxController = InfluxDBController()
-        self.prev_test_no = "E16"
-        self.test_no = "E16a"
+        self.prev_test_no = "E17"
+        self.test_no = "E17a"
         self.statistics = Statistics(slice_ids, "Throughput_{}.csv".format(self.test_no))
         self.reset()
 
@@ -57,7 +57,8 @@ class Environment:
             if not matching_pair == None:
                 throughputs.append(matching_pair[1])
             else:
-                throughputs.append(0)
+                print("Warning: no throughput found for slice {}".format(id))
+                throughputs.append(None)
 
         return throughputs
     
@@ -96,6 +97,8 @@ class Environment:
                     self.prev_timestamp = next_timestamp
 
                 new_throughputs = self.get_throughputs()
+                if new_throughputs.count(None) > 0:
+                    continue
                 sum_throughputs = sum(new_throughputs)
 
             reward = self.calculate_reward(new_throughputs)        

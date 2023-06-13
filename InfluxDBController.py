@@ -1,3 +1,4 @@
+from datetime import datetime
 from influxdb import InfluxDBClient
 
 class InfluxDBController(object):
@@ -31,16 +32,20 @@ class InfluxDBController(object):
             slice_id = slice_stats['tags']['slice_id']
 
             bytes_now = slice_stats['values'][0][1]
-            bytes_prev = 0
+            time_now = datetime.strptime(slice_stats['values'][0][0], '%Y-%m-%dT%H:%M:%S.%fZ')
+            bytes_prev = None
             for prev_stats in slice_bytes_prev.raw['series']:
                 slice_id_prev = prev_stats['tags']['slice_id']
                 if (slice_id == slice_id_prev):
                     bytes_prev = prev_stats['values'][0][1]
+                    time_prev = datetime.strptime(prev_stats['values'][0][0], '%Y-%m-%dT%H:%M:%S.%fZ')
                     break
             
-            bandwidth = 8*(bytes_now - bytes_prev) / 4 / 1000000
+            if bytes_prev != None and bytes_now >= bytes_prev:
+                d_time = (time_now - time_prev).total_seconds()
+                bandwidth = 8*(bytes_now - bytes_prev) / d_time / 1000000
 
-            results.append((slice_id, bandwidth))
+                results.append((slice_id, bandwidth))
         
         results.sort(key=lambda x: x[0])
 
