@@ -171,8 +171,8 @@ def load_models(ep):
     target_actor.load_weights('{}/target_actor_model_{}.h5'.format(env.prev_test_no, ep))
     target_critic.load_weights('{}/target_critic_model_{}.h5'.format(env.prev_test_no, ep))
 
-max_stdev = 250
-min_stdev = 50
+max_stdev = 500
+min_stdev = 250
 
 actor_model = get_actor()
 critic_model = get_critic()
@@ -209,16 +209,8 @@ prev_state = env.reset()
 ep1 = 7800
 load_models(ep1)
 
-states = [[0.0,0.0,0.0,0.0,20.0] for _ in range(2)]
-actions = [[0.0, 0.0, 0.0, 0.0, 10000.0], [5000.0, 5000.0, 5000.0, 5000.0, 5000.0]]
-states = tf.convert_to_tensor(states,  dtype=tf.float32)
-actions = tf.convert_to_tensor(actions,  dtype=tf.float32)
-critic_value = tf.squeeze(critic_model([states, actions]), 1)
-
-print(critic_value.numpy().tolist())
-
 t0 = time.time()
-for ep in range(ep1, 0):#total_episodes):
+for ep in range(ep1, total_episodes):
     tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
 
     stdev = max_stdev - (ep / (total_episodes / 2)) * (max_stdev - min_stdev) # Linearly decrease stdev from max to min over 50% of episodes
