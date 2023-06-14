@@ -27,8 +27,8 @@ class Environment:
 
         self.num_slices = len(slice_ids)
         self.influxController = InfluxDBController()
-        self.prev_test_no = "E17a"
-        self.test_no = "E17b"
+        self.prev_test_no = "E18b"
+        self.test_no = "E18c"
         self.statistics = Statistics(slice_ids, "Throughput_{}.csv".format(self.test_no))
         self.reset()
 
