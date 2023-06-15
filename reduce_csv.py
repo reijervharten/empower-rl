@@ -3,7 +3,7 @@ import csv
 from numpy import mean
 
 
-name = 'E16a'
+name = 'E12'
 
 input = open('Throughput_{}.csv'.format(name), 'r')
 output = open('Throughput_{}_reduced.csv'.format(name), 'w')
@@ -23,7 +23,10 @@ while True:
     if values == ['']:
         break
     for j, value in enumerate(values):
-        average[j].append(float(value))
+        try:
+            average[j].append(float(value))
+        except ValueError:
+            average[j].append(0)
 
     i += 1
     

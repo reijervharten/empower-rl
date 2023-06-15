@@ -191,9 +191,9 @@ actor_lr = 0.001
 critic_optimizer = tf.keras.optimizers.Adam(critic_lr)
 actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
 
-total_episodes = 120000
+total_episodes = 12000
 # Discount factor for future rewards
-gamma = 0.8
+gamma = 0.3
 # Used to update target networks
 tau = 0.005
 
@@ -218,7 +218,7 @@ for ep in range(ep1, total_episodes):
     action = policy(tf_prev_state, stdev)
 
     # Recieve state and reward from environment.
-    state, reward = env.step(action, True)
+    state, reward = env.step(action, False)
 
     buffer.record((prev_state, action, reward, state))
     buffer.learn()
@@ -229,9 +229,9 @@ for ep in range(ep1, total_episodes):
 
     ep_reward_list.append(reward)
 
-    if ep % 1000 == 0:
+    if ep % 100 == 0:
         # Mean of last 500 episodes
-        avg_reward = np.mean(ep_reward_list[-1000:])
+        avg_reward = np.mean(ep_reward_list[-100:])
         print("Episode * {} * Avg Reward is ==> {}".format(ep, avg_reward))
         avg_reward_list.append(avg_reward)
         print("Episode {} / {}, time: {}".format(ep, total_episodes, time.time() - t0))
