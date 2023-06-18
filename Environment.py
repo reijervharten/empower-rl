@@ -7,16 +7,16 @@ import requests
 from InfluxDBController import InfluxDBController
 from Statistics import Statistics
 
-slice_ids = [0, 8, 18, 20, 30]#, 44, 46, 48]
+slice_ids = [0, 8, 18, 20, 30, 44, 46, 48]
 slice_required_throughputs = [
     2, # DSCP 0: Best effort
     0.5, # DSCP 8: Low priority (Video surveillance)
     4, # DSCP 18: ??
     1.5, # DSCP 20: Network operations
-    8#, # DSCP 30: Video
-    # 1, # DSCP 44: Voice
-    # 1.5, # DSCP 46: Critical data
-    # 0.5, # DSCP 48: Network control
+    8, # DSCP 30: Video
+    1, # DSCP 44: Voice
+    1.5, # DSCP 46: Critical data
+    0.5, # DSCP 48: Network control
 ]
 episode_interval_seconds = 4
 
@@ -27,8 +27,8 @@ class Environment:
 
         self.num_slices = len(slice_ids)
         self.influxController = InfluxDBController()
-        self.prev_test_no = "E20"
-        self.test_no = "E20"
+        self.prev_test_no = "E22b"
+        self.test_no = "E22c"
         self.statistics = Statistics(slice_ids, "Throughput_{}.csv".format(self.test_no))
         self.reset()
 
@@ -36,10 +36,11 @@ class Environment:
 
     def reset(self):
         self.quantums = [2500 for _ in slice_ids]
-        self.update_quantums()
-        self.prev_state = [4, 4, 4, 4, 4]
+        # self.update_quantums()
+        # self.prev_state = self.get_throughputs()
+        self.prev_state = [4 for _ in slice_ids]
 
-        return self.get_throughputs()
+        return self.prev_state
     
     def update_quantums(self):
         project_id = '2788d1eb-dbe4-4972-80be-e48462968265'  # Project ID of empower SSID of Controller in Office
