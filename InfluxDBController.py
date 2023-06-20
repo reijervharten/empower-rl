@@ -17,7 +17,7 @@ class InfluxDBController(object):
                             'GROUP BY "slice_id"::tag '
         self.query_prev = 'SELECT last("tx_bytes") ' + \
                             'FROM "empower.apps.wifislicestats.wifislicestats" ' + \
-                            'WHERE time <= now() - 4s ' + \
+                            'WHERE time < now() - 4s ' + \
                             'GROUP BY "slice_id"::tag '
         self.client = InfluxDBClient(self.host, self.port, self.user, self.password, self.dbname)
 
