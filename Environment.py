@@ -10,13 +10,13 @@ from Statistics import Statistics
 slice_ids = [0, 8, 18, 20, 30, 44, 46, 48]
 slice_required_throughputs = [
     2, # DSCP 0: Best effort
-    0.5, # DSCP 8: Low priority (Video surveillance)
-    4, # DSCP 18: ??
+    0.1, # DSCP 8: Low priority (Video surveillance)
+    0.3, # DSCP 18: ??
     1.5, # DSCP 20: Network operations
-    8, # DSCP 30: Video
-    1, # DSCP 44: Voice
-    1.5, # DSCP 46: Critical data
-    0.5, # DSCP 48: Network control
+    6, # DSCP 30: Video
+    4, # DSCP 44: Voice
+    3, # DSCP 46: Critical data
+    2.5, # DSCP 48: Network control
 ]
 episode_interval_seconds = 4
 
@@ -27,8 +27,8 @@ class Environment:
 
         self.num_slices = len(slice_ids)
         self.influxController = InfluxDBController()
-        self.prev_test_no = "E23c"
-        self.test_no = "E23d"
+        self.prev_test_no = "E24"
+        self.test_no = "E24b"
         self.statistics = Statistics(slice_ids, "Throughput_{}.csv".format(self.test_no))
         self.reset()
 

@@ -206,19 +206,19 @@ avg_reward_list = []
 
 prev_state = env.reset()
 
-ep1 = 16400
-load_models(ep1)
+ep1 = 22000
+# load_models(ep1)
 
 t0 = time.time()
 for ep in range(ep1, total_episodes):
     tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
 
-    stdev = max_stdev - (ep / (total_episodes / 2)) * (max_stdev - min_stdev) # Linearly decrease stdev from max to min over 50% of episodes
+    stdev = max_stdev - (ep / (total_episodes * 0.75)) * (max_stdev - min_stdev) # Linearly decrease stdev from max to min over 75% of episodes
     stdev = max(stdev, min_stdev)
     action = policy(tf_prev_state, stdev)
 
     # Recieve state and reward from environment.
-    state, reward = env.step(action, False)
+    state, reward = env.step(action, True)
 
     buffer.record((prev_state, action, reward, state))
     buffer.learn()
@@ -229,12 +229,13 @@ for ep in range(ep1, total_episodes):
 
     ep_reward_list.append(reward)
 
-    if ep % 100 == 0:
+    if ep % 1000 == 0:
         # Mean of last 500 episodes
-        avg_reward = np.mean(ep_reward_list[-100:])
-        print("Episode * {} * Avg Reward is ==> {}".format(ep, avg_reward))
+        avg_reward = np.mean(ep_reward_list[-1000:])
+        print("Episode * {} * Avg Reward is ==> {} (stdev: {})".format(ep, avg_reward, stdev))
         avg_reward_list.append(avg_reward)
-        print("Episode {} / {}, time: {}".format(ep, total_episodes, time.time() - t0))
+        print("Episode {} / {}, delta-time: {}".format(ep, total_episodes, time.time() - t0))
+        t0 = time.time()
 
         save_models(ep)
         
