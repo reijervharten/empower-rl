@@ -4,7 +4,7 @@ import time
 import numpy as np
 import requests
 
-from InfluxDBController import InfluxDBController
+# from InfluxDBController import InfluxDBController
 from Statistics import Statistics
 
 slice_ids = [0, 8, 18, 20, 30, 44, 46, 48]
@@ -23,12 +23,12 @@ episode_interval_seconds = 4
 class Environment:
     def __init__(self):
         self.upper_bound = 10000
-        self.lower_bound = 500
+        self.lower_bound = 250
 
         self.num_slices = len(slice_ids)
-        self.influxController = InfluxDBController()
-        self.prev_test_no = "E24"
-        self.test_no = "E24b"
+        # self.influxController = InfluxDBController()
+        self.prev_test_no = "E25c"
+        self.test_no = "E25d"
         self.statistics = Statistics(slice_ids, "Throughput_{}.csv".format(self.test_no))
         self.reset()
 
@@ -109,19 +109,4 @@ class Environment:
         state = new_throughputs
         self.prev_state = state
         return state, reward
-    
-    def approximate_next_state(self, state, action):
-        total_throughput = sum(state)
-        next_state = []
-
-        #action += np.random.rand(len(action)) *200
-        
-        for action_value in action:
-            fraction = action_value / sum(action)
-            next_state.append(total_throughput * fraction)
-        
-        return next_state
-    
-    def approximate_reward(self, next_state):
-        return self.calculate_reward(next_state)
     

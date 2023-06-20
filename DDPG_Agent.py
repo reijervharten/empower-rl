@@ -206,7 +206,7 @@ avg_reward_list = []
 
 prev_state = env.reset()
 
-ep1 = 22000
+ep1 = 0
 # load_models(ep1)
 
 t0 = time.time()
