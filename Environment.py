@@ -27,8 +27,8 @@ class Environment:
 
         self.num_slices = len(slice_ids)
         # self.influxController = InfluxDBController()
-        self.prev_test_no = "E25c"
-        self.test_no = "E25d"
+        self.prev_test_no = "E26"
+        self.test_no = "E26b"
         self.statistics = Statistics(slice_ids, "Throughput_{}.csv".format(self.test_no))
         self.reset()
 
@@ -64,13 +64,11 @@ class Environment:
         return throughputs
     
     def calculate_reward(self, throughputs):
-        reward = 100
+        worst_tp_frac = 1
         for id, tp, goal in zip(slice_ids, throughputs, slice_required_throughputs):
-            if (tp < goal):
-                tp = max(tp, 0)
-                reward -= (goal - tp) * (goal - tp)
+            worst_tp_frac = min(worst_tp_frac, tp / goal)
         
-        return reward
+        return worst_tp_frac * 100
     
     def step(self, action, simulate=False):
         self.quantums = action

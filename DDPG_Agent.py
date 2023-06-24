@@ -171,7 +171,7 @@ def load_models(ep):
     target_actor.load_weights('{}/target_actor_model_{}.h5'.format(env.prev_test_no, ep))
     target_critic.load_weights('{}/target_critic_model_{}.h5'.format(env.prev_test_no, ep))
 
-max_stdev = 2500
+max_stdev = 100
 min_stdev = 100
 
 actor_model = get_actor()
@@ -191,7 +191,7 @@ actor_lr = 0.001
 critic_optimizer = tf.keras.optimizers.Adam(critic_lr)
 actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
 
-total_episodes = 400000
+total_episodes = 600000
 # Discount factor for future rewards
 gamma = 0.8
 # Used to update target networks
