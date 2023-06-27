@@ -191,7 +191,7 @@ actor_lr = 0.001
 critic_optimizer = tf.keras.optimizers.Adam(critic_lr)
 actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
 
-total_episodes = 1400000
+total_episodes = 1600000
 # Discount factor for future rewards
 gamma = 0.8
 # Used to update target networks
@@ -206,7 +206,7 @@ avg_reward_list = []
 
 prev_state = env.reset()
 
-ep1 = 999000
+ep1 = 1399000
 load_models(ep1)
 
 t0 = time.time()
